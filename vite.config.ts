@@ -95,6 +95,10 @@ export default defineConfig({
               },
             },
           },
+          {
+            urlPattern: new RegExp("^/(?!\\?json=).*"),
+            handler: "NetworkOnly"
+          },
         ],
       },
       manifest: {
