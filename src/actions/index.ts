@@ -17,6 +17,7 @@ export {
   actionChangeFontSize,
   actionChangeFontFamily,
   actionChangeTextAlign,
+  actionChangeVerticalAlign,
 } from "./actionProperties";
 
 export {
@@ -26,6 +27,7 @@ export {
   actionZoomOut,
   actionResetZoom,
   actionZoomToFit,
+  actionToggleTheme,
 } from "./actionCanvas";
 
 export { actionFinalize } from "./actionFinalize";
@@ -33,8 +35,8 @@ export { actionFinalize } from "./actionFinalize";
 export {
   actionChangeProjectName,
   actionChangeExportBackground,
-  actionSaveScene,
-  actionSaveAsScene,
+  actionSaveToActiveFile,
+  actionSaveFileToDisk,
   actionLoadScene,
 } from "./actionExport";
 
@@ -66,14 +68,21 @@ export {
   distributeVertically,
 } from "./actionDistribute";
 
+export { actionFlipHorizontal, actionFlipVertical } from "./actionFlip";
+
 export {
   actionCopy,
   actionCut,
   actionCopyAsPng,
   actionCopyAsSvg,
+  copyText,
 } from "./actionClipboard";
 
 export { actionToggleGridMode } from "./actionToggleGridMode";
 export { actionToggleZenMode } from "./actionToggleZenMode";
 
 export { actionToggleStats } from "./actionToggleStats";
+export { actionUnbindText, actionBindText } from "./actionBoundText";
+export { actionLink } from "../element/Hyperlink";
+export { actionToggleElementLock } from "./actionElementLock";
+export { actionToggleLinearEditor } from "./actionLinearEditor";

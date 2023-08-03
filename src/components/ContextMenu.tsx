@@ -1,8 +1,6 @@
-import React from "react";
-import { render, unmountComponentAtNode } from "react-dom";
 import clsx from "clsx";
 import { Popover } from "./Popover";
-import { t } from "../i18n";
+import { t, TranslationKeys } from "../i18n";
 
 import "./ContextMenu.scss";
 import {
@@ -11,66 +9,112 @@ import {
 } from "../actions/shortcuts";
 import { Action } from "../actions/types";
 import { ActionManager } from "../actions/manager";
-import { AppState } from "../types";
+import {
+  useExcalidrawAppState,
+  useExcalidrawElements,
+  useExcalidrawSetAppState,
+} from "./App";
+import React from "react";
 
-export type ContextMenuOption = "separator" | Action;
+export type ContextMenuItem = typeof CONTEXT_MENU_SEPARATOR | Action;
+
+export type ContextMenuItems = (ContextMenuItem | false | null | undefined)[];
 
 type ContextMenuProps = {
-  options: ContextMenuOption[];
-  onCloseRequest?(): void;
+  actionManager: ActionManager;
+  items: ContextMenuItems;
   top: number;
   left: number;
-  actionManager: ActionManager;
-  appState: Readonly<AppState>;
 };
 
-const ContextMenu = ({
-  options,
-  onCloseRequest,
-  top,
-  left,
-  actionManager,
-  appState,
-}: ContextMenuProps) => {
-  const isDarkTheme = !!document
-    .querySelector(".excalidraw")
-    ?.classList.contains("Appearance_dark");
-  return (
-    <div
-      className={clsx("excalidraw", {
-        "Appearance_dark Appearance_dark-background-none": isDarkTheme,
-      })}
-    >
+export const CONTEXT_MENU_SEPARATOR = "separator";
+
+export const ContextMenu = React.memo(
+  ({ actionManager, items, top, left }: ContextMenuProps) => {
+    const appState = useExcalidrawAppState();
+    const setAppState = useExcalidrawSetAppState();
+    const elements = useExcalidrawElements();
+
+    const filteredItems = items.reduce((acc: ContextMenuItem[], item) => {
+      if (
+        item &&
+        (item === CONTEXT_MENU_SEPARATOR ||
+          !item.predicate ||
+          item.predicate(
+            elements,
+            appState,
+            actionManager.app.props,
+            actionManager.app,
+          ))
+      ) {
+        acc.push(item);
+      }
+      return acc;
+    }, []);
+
+    return (
       <Popover
-        onCloseRequest={onCloseRequest}
+        onCloseRequest={() => setAppState({ contextMenu: null })}
         top={top}
         left={left}
         fitInViewport={true}
+        offsetLeft={appState.offsetLeft}
+        offsetTop={appState.offsetTop}
+        viewportWidth={appState.width}
+        viewportHeight={appState.height}
       >
         <ul
           className="context-menu"
           onContextMenu={(event) => event.preventDefault()}
         >
-          {options.map((option, idx) => {
-            if (option === "separator") {
-              return <hr key={idx} className="context-menu-option-separator" />;
+          {filteredItems.map((item, idx) => {
+            if (item === CONTEXT_MENU_SEPARATOR) {
+              if (
+                !filteredItems[idx - 1] ||
+                filteredItems[idx - 1] === CONTEXT_MENU_SEPARATOR
+              ) {
+                return null;
+              }
+              return <hr key={idx} className="context-menu-item-separator" />;
             }
 
-            const actionName = option.name;
-            const label = option.contextItemLabel
-              ? t(option.contextItemLabel)
-              : "";
+            const actionName = item.name;
+            let label = "";
+            if (item.contextItemLabel) {
+              if (typeof item.contextItemLabel === "function") {
+                label = t(
+                  item.contextItemLabel(
+                    elements,
+                    appState,
+                    actionManager.app,
+                  ) as unknown as TranslationKeys,
+                );
+              } else {
+                label = t(item.contextItemLabel as unknown as TranslationKeys);
+              }
+            }
+
             return (
-              <li key={idx} data-testid={actionName} onClick={onCloseRequest}>
+              <li
+                key={idx}
+                data-testid={actionName}
+                onClick={() => {
+                  // we need update state before executing the action in case
+                  // the action uses the appState it's being passed (that still
+                  // contains a defined contextMenu) to return the next state.
+                  setAppState({ contextMenu: null }, () => {
+                    actionManager.executeAction(item, "contextMenu");
+                  });
+                }}
+              >
                 <button
-                  className={clsx("context-menu-option", {
+                  className={clsx("context-menu-item", {
                     dangerous: actionName === "deleteSelectedElements",
-                    checkmark: option.checked?.(appState),
+                    checkmark: item.checked?.(appState),
                   })}
-                  onClick={() => actionManager.executeAction(option)}
                 >
-                  <div className="context-menu-option__label">{label}</div>
-                  <kbd className="context-menu-option__shortcut">
+                  <div className="context-menu-item__label">{label}</div>
+                  <kbd className="context-menu-item__shortcut">
                     {actionName
                       ? getShortcutFromShortcutName(actionName as ShortcutName)
                       : ""}
@@ -81,52 +125,6 @@ const ContextMenu = ({
           })}
         </ul>
       </Popover>
-    </div>
-  );
-};
-
-let contextMenuNode: HTMLDivElement;
-const getContextMenuNode = (): HTMLDivElement => {
-  if (contextMenuNode) {
-    return contextMenuNode;
-  }
-  const div = document.createElement("div");
-  document.body.appendChild(div);
-  return (contextMenuNode = div);
-};
-
-type ContextMenuParams = {
-  options: (ContextMenuOption | false | null | undefined)[];
-  top: ContextMenuProps["top"];
-  left: ContextMenuProps["left"];
-  actionManager: ContextMenuProps["actionManager"];
-  appState: Readonly<AppState>;
-};
-
-const handleClose = () => {
-  unmountComponentAtNode(getContextMenuNode());
-};
-
-export default {
-  push(params: ContextMenuParams) {
-    const options = Array.of<ContextMenuOption>();
-    params.options.forEach((option) => {
-      if (option) {
-        options.push(option);
-      }
-    });
-    if (options.length) {
-      render(
-        <ContextMenu
-          top={params.top}
-          left={params.left}
-          options={options}
-          onCloseRequest={handleClose}
-          actionManager={params.actionManager}
-          appState={params.appState}
-        />,
-        getContextMenuNode(),
-      );
-    }
+    );
   },
-};
+);

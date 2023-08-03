@@ -1,6 +1,10 @@
 import { AppState, PointerCoords, Zoom } from "../types";
 import { ExcalidrawElement } from "../element/types";
-import { getCommonBounds, getClosestElementBounds } from "../element";
+import {
+  getCommonBounds,
+  getClosestElementBounds,
+  getVisibleElements,
+} from "../element";
 
 import {
   sceneCoordsToViewportCoords,
@@ -37,14 +41,8 @@ export const centerScrollOn = ({
   zoom: Zoom;
 }) => {
   return {
-    scrollX:
-      (viewportDimensions.width / 2) * (1 / zoom.value) -
-      scenePoint.x -
-      zoom.translation.x * (1 / zoom.value),
-    scrollY:
-      (viewportDimensions.height / 2) * (1 / zoom.value) -
-      scenePoint.y -
-      zoom.translation.y * (1 / zoom.value),
+    scrollX: viewportDimensions.width / 2 / zoom.value - scenePoint.x,
+    scrollY: viewportDimensions.height / 2 / zoom.value - scenePoint.y,
   };
 };
 
@@ -53,6 +51,8 @@ export const calculateScrollCenter = (
   appState: AppState,
   canvas: HTMLCanvasElement | null,
 ): { scrollX: number; scrollY: number } => {
+  elements = getVisibleElements(elements);
+
   if (!elements.length) {
     return {
       scrollX: 0,

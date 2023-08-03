@@ -1,19 +1,20 @@
 import React from "react";
 import { t } from "../i18n";
+import { useExcalidrawContainer } from "./App";
 
-interface SectionProps extends React.HTMLProps<HTMLElement> {
-  heading: string;
-  children: React.ReactNode | ((header: React.ReactNode) => React.ReactNode);
-}
-
-export const Section = ({ heading, children, ...props }: SectionProps) => {
+export const Section: React.FC<{
+  heading: "canvasActions" | "selectedShapeActions" | "shapes";
+  children?: React.ReactNode | ((heading: React.ReactNode) => React.ReactNode);
+  className?: string;
+}> = ({ heading, children, ...props }) => {
+  const { id } = useExcalidrawContainer();
   const header = (
-    <h2 className="visually-hidden" id={`${heading}-title`}>
+    <h2 className="visually-hidden" id={`${id}-${heading}-title`}>
       {t(`headings.${heading}`)}
     </h2>
   );
   return (
-    <section {...props} aria-labelledby={`${heading}-title`}>
+    <section {...props} aria-labelledby={`${id}-${heading}-title`}>
       {typeof children === "function" ? (
         children(header)
       ) : (

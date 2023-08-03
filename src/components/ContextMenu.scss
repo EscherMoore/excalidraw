@@ -4,13 +4,13 @@
   .context-menu {
     position: relative;
     border-radius: 4px;
-    box-shadow: 0px 3px 10px transparentize($oc-black, 0.8);
+    box-shadow: 0 3px 10px transparentize($oc-black, 0.8);
     padding: 0;
     list-style: none;
     user-select: none;
     margin: -0.25rem 0 0 0.125rem;
     padding: 0.5rem 0;
-    background-color: var(--popup-secondary-background-color);
+    background-color: var(--popup-secondary-bg-color);
     border: 1px solid var(--button-gray-3);
     cursor: default;
   }
@@ -19,7 +19,7 @@
     color: var(--popup-text-color);
   }
 
-  .context-menu-option {
+  .context-menu-item {
     position: relative;
     width: 100%;
     min-width: 9.5rem;
@@ -30,6 +30,7 @@
     background-color: transparent;
     border: none;
     white-space: nowrap;
+    font-family: inherit;
 
     display: grid;
     grid-template-columns: 1fr 0.2fr;
@@ -43,16 +44,16 @@
     }
 
     &.dangerous {
-      .context-menu-option__label {
+      .context-menu-item__label {
         color: $oc-red-7;
       }
     }
 
-    .context-menu-option__label {
+    .context-menu-item__label {
       justify-self: start;
       margin-inline-end: 20px;
     }
-    .context-menu-option__shortcut {
+    .context-menu-item__shortcut {
       justify-self: end;
       opacity: 0.6;
       font-family: inherit;
@@ -60,37 +61,37 @@
     }
   }
 
-  .context-menu-option:hover {
-    color: var(--popup-background-color);
+  .context-menu-item:hover {
+    color: var(--popup-bg-color);
     background-color: var(--select-highlight-color);
 
     &.dangerous {
-      .context-menu-option__label {
-        color: var(--popup-background-color);
+      .context-menu-item__label {
+        color: var(--popup-bg-color);
       }
       background-color: $oc-red-6;
     }
   }
 
-  .context-menu-option:focus {
+  .context-menu-item:focus {
     z-index: 1;
   }
 
-  @media #{$is-mobile-query} {
-    .context-menu-option {
+  @include isMobile {
+    .context-menu-item {
       display: block;
 
-      .context-menu-option__label {
+      .context-menu-item__label {
         margin-inline-end: 0;
       }
 
-      .context-menu-option__shortcut {
+      .context-menu-item__shortcut {
         display: none;
       }
     }
   }
 
-  .context-menu-option-separator {
+  .context-menu-item-separator {
     border: none;
     border-top: 1px solid $oc-gray-5;
   }

@@ -1,33 +1,96 @@
-import React from "react";
-import { trackEvent } from "../analytics";
-import { load, questionCircle, save, saveAs } from "../components/icons";
+import { questionCircle, saveAs } from "../components/icons";
 import { ProjectName } from "../components/ProjectName";
 import { ToolButton } from "../components/ToolButton";
-import "../components/ToolIcon.scss";
 import { Tooltip } from "../components/Tooltip";
+import { DarkModeToggle } from "../components/DarkModeToggle";
 import { loadFromJSON, saveAsJSON } from "../data";
+import { resaveAsImageWithScene } from "../data/resave";
 import { t } from "../i18n";
-import useIsMobile from "../is-mobile";
+import { useDevice } from "../components/App";
 import { KEYS } from "../keys";
 import { register } from "./register";
+import { CheckboxItem } from "../components/CheckboxItem";
+import { getExportSize } from "../scene/export";
+import { DEFAULT_EXPORT_PADDING, EXPORT_SCALES, THEME } from "../constants";
+import { getSelectedElements, isSomeElementSelected } from "../scene";
+import { getNonDeletedElements } from "../element";
+import { isImageFileHandle } from "../data/blob";
+import { nativeFileSystemSupported } from "../data/filesystem";
+import { Theme } from "../element/types";
+
+import "../components/ToolIcon.scss";
 
 export const actionChangeProjectName = register({
   name: "changeProjectName",
+  trackEvent: false,
   perform: (_elements, appState, value) => {
-    trackEvent("change", "title");
     return { appState: { ...appState, name: value }, commitToHistory: false };
   },
-  PanelComponent: ({ appState, updateData }) => (
+  PanelComponent: ({ appState, updateData, appProps, data }) => (
     <ProjectName
       label={t("labels.fileTitle")}
       value={appState.name || "Unnamed"}
       onChange={(name: string) => updateData(name)}
+      isNameEditable={
+        typeof appProps.name === "undefined" && !appState.viewModeEnabled
+      }
+      ignoreFocus={data?.ignoreFocus ?? false}
     />
   ),
 });
 
+export const actionChangeExportScale = register({
+  name: "changeExportScale",
+  trackEvent: { category: "export", action: "scale" },
+  perform: (_elements, appState, value) => {
+    return {
+      appState: { ...appState, exportScale: value },
+      commitToHistory: false,
+    };
+  },
+  PanelComponent: ({ elements: allElements, appState, updateData }) => {
+    const elements = getNonDeletedElements(allElements);
+    const exportSelected = isSomeElementSelected(elements, appState);
+    const exportedElements = exportSelected
+      ? getSelectedElements(elements, appState)
+      : elements;
+
+    return (
+      <>
+        {EXPORT_SCALES.map((s) => {
+          const [width, height] = getExportSize(
+            exportedElements,
+            DEFAULT_EXPORT_PADDING,
+            s,
+          );
+
+          const scaleButtonTitle = `${t(
+            "imageExportDialog.label.scale",
+          )} ${s}x (${width}x${height})`;
+
+          return (
+            <ToolButton
+              key={s}
+              size="small"
+              type="radio"
+              icon={`${s}x`}
+              name="export-canvas-scale"
+              title={scaleButtonTitle}
+              aria-label={scaleButtonTitle}
+              id="export-canvas-scale"
+              checked={s === appState.exportScale}
+              onChange={() => updateData(s)}
+            />
+          );
+        })}
+      </>
+    );
+  },
+});
+
 export const actionChangeExportBackground = register({
   name: "changeExportBackground",
+  trackEvent: { category: "export", action: "toggleBackground" },
   perform: (_elements, appState, value) => {
     return {
       appState: { ...appState, exportBackground: value },
@@ -35,19 +98,18 @@ export const actionChangeExportBackground = register({
     };
   },
   PanelComponent: ({ appState, updateData }) => (
-    <label>
-      <input
-        type="checkbox"
-        checked={appState.exportBackground}
-        onChange={(event) => updateData(event.target.checked)}
-      />{" "}
-      {t("labels.withBackground")}
-    </label>
+    <CheckboxItem
+      checked={appState.exportBackground}
+      onChange={(checked) => updateData(checked)}
+    >
+      {t("imageExportDialog.label.withBackground")}
+    </CheckboxItem>
   ),
 });
 
 export const actionChangeExportEmbedScene = register({
   name: "changeExportEmbedScene",
+  trackEvent: { category: "export", action: "embedScene" },
   perform: (_elements, appState, value) => {
     return {
       appState: { ...appState, exportEmbedScene: value },
@@ -55,98 +117,86 @@ export const actionChangeExportEmbedScene = register({
     };
   },
   PanelComponent: ({ appState, updateData }) => (
-    <label style={{ display: "flex" }}>
-      <input
-        type="checkbox"
-        checked={appState.exportEmbedScene}
-        onChange={(event) => updateData(event.target.checked)}
-      />{" "}
-      {t("labels.exportEmbedScene")}
-      <Tooltip
-        label={t("labels.exportEmbedScene_details")}
-        position="above"
-        long={true}
-      >
-        <div className="TooltipIcon">{questionCircle}</div>
+    <CheckboxItem
+      checked={appState.exportEmbedScene}
+      onChange={(checked) => updateData(checked)}
+    >
+      {t("imageExportDialog.label.embedScene")}
+      <Tooltip label={t("imageExportDialog.tooltip.embedScene")} long={true}>
+        <div className="excalidraw-tooltip-icon">{questionCircle}</div>
       </Tooltip>
-    </label>
+    </CheckboxItem>
   ),
 });
 
-export const actionChangeShouldAddWatermark = register({
-  name: "changeShouldAddWatermark",
-  perform: (_elements, appState, value) => {
-    return {
-      appState: { ...appState, shouldAddWatermark: value },
-      commitToHistory: false,
-    };
+export const actionSaveToActiveFile = register({
+  name: "saveToActiveFile",
+  trackEvent: { category: "export" },
+  predicate: (elements, appState, props, app) => {
+    return (
+      !!app.props.UIOptions.canvasActions.saveToActiveFile &&
+      !!appState.fileHandle &&
+      !appState.viewModeEnabled
+    );
   },
-  PanelComponent: ({ appState, updateData }) => (
-    <label>
-      <input
-        type="checkbox"
-        checked={appState.shouldAddWatermark}
-        onChange={(event) => updateData(event.target.checked)}
-      />{" "}
-      {t("labels.addWatermark")}
-    </label>
-  ),
-});
-
-export const actionSaveScene = register({
-  name: "saveScene",
-  perform: async (elements, appState, value) => {
+  perform: async (elements, appState, value, app) => {
     const fileHandleExists = !!appState.fileHandle;
+
     try {
-      const { fileHandle } = await saveAsJSON(elements, appState);
+      const { fileHandle } = isImageFileHandle(appState.fileHandle)
+        ? await resaveAsImageWithScene(elements, appState, app.files)
+        : await saveAsJSON(elements, appState, app.files);
+
       return {
         commitToHistory: false,
         appState: {
           ...appState,
           fileHandle,
-          toastMessage: fileHandleExists
-            ? fileHandle.name
-              ? t("toast.fileSavedToFilename").replace(
-                  "{filename}",
-                  `"${fileHandle.name}"`,
-                )
-              : t("toast.fileSaved")
+          toast: fileHandleExists
+            ? {
+                message: fileHandle?.name
+                  ? t("toast.fileSavedToFilename").replace(
+                      "{filename}",
+                      `"${fileHandle.name}"`,
+                    )
+                  : t("toast.fileSaved"),
+              }
             : null,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       if (error?.name !== "AbortError") {
         console.error(error);
+      } else {
+        console.warn(error);
       }
       return { commitToHistory: false };
     }
   },
   keyTest: (event) =>
     event.key === KEYS.S && event[KEYS.CTRL_OR_CMD] && !event.shiftKey,
-  PanelComponent: ({ updateData }) => (
-    <ToolButton
-      type="button"
-      icon={save}
-      title={t("buttons.save")}
-      aria-label={t("buttons.save")}
-      showAriaLabel={useIsMobile()}
-      onClick={() => updateData(null)}
-    />
-  ),
 });
 
-export const actionSaveAsScene = register({
-  name: "saveAsScene",
-  perform: async (elements, appState, value) => {
+export const actionSaveFileToDisk = register({
+  name: "saveFileToDisk",
+  viewMode: true,
+  trackEvent: { category: "export" },
+  perform: async (elements, appState, value, app) => {
     try {
-      const { fileHandle } = await saveAsJSON(elements, {
-        ...appState,
-        fileHandle: null,
-      });
+      const { fileHandle } = await saveAsJSON(
+        elements,
+        {
+          ...appState,
+          fileHandle: null,
+        },
+        app.files,
+      );
       return { commitToHistory: false, appState: { ...appState, fileHandle } };
-    } catch (error) {
+    } catch (error: any) {
       if (error?.name !== "AbortError") {
         console.error(error);
+      } else {
+        console.warn(error);
       }
       return { commitToHistory: false };
     }
@@ -159,48 +209,76 @@ export const actionSaveAsScene = register({
       icon={saveAs}
       title={t("buttons.saveAs")}
       aria-label={t("buttons.saveAs")}
-      showAriaLabel={useIsMobile()}
-      hidden={
-        !("chooseFileSystemEntries" in window || "showOpenFilePicker" in window)
-      }
+      showAriaLabel={useDevice().isMobile}
+      hidden={!nativeFileSystemSupported}
       onClick={() => updateData(null)}
+      data-testid="save-as-button"
     />
   ),
 });
 
 export const actionLoadScene = register({
   name: "loadScene",
-  perform: async (elements, appState) => {
+  trackEvent: { category: "export" },
+  predicate: (elements, appState, props, app) => {
+    return (
+      !!app.props.UIOptions.canvasActions.loadScene && !appState.viewModeEnabled
+    );
+  },
+  perform: async (elements, appState, _, app) => {
     try {
       const {
         elements: loadedElements,
         appState: loadedAppState,
-      } = await loadFromJSON(appState);
+        files,
+      } = await loadFromJSON(appState, elements);
       return {
         elements: loadedElements,
         appState: loadedAppState,
+        files,
         commitToHistory: true,
       };
-    } catch (error) {
+    } catch (error: any) {
       if (error?.name === "AbortError") {
+        console.warn(error);
         return false;
       }
       return {
         elements,
         appState: { ...appState, errorMessage: error.message },
+        files: app.files,
         commitToHistory: false,
       };
     }
   },
   keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.O,
-  PanelComponent: ({ updateData, appState }) => (
-    <ToolButton
-      type="button"
-      icon={load}
-      title={t("buttons.load")}
-      aria-label={t("buttons.load")}
-      showAriaLabel={useIsMobile()}
-      onClick={updateData}
-    />
+});
+
+export const actionExportWithDarkMode = register({
+  name: "exportWithDarkMode",
+  trackEvent: { category: "export", action: "toggleTheme" },
+  perform: (_elements, appState, value) => {
+    return {
+      appState: { ...appState, exportWithDarkMode: value },
+      commitToHistory: false,
+    };
+  },
+  PanelComponent: ({ appState, updateData }) => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        marginTop: "-45px",
+        marginBottom: "10px",
+      }}
+    >
+      <DarkModeToggle
+        value={appState.exportWithDarkMode ? THEME.DARK : THEME.LIGHT}
+        onChange={(theme: Theme) => {
+          updateData(theme === THEME.DARK);
+        }}
+        title={t("imageExportDialog.label.darkMode")}
+      />
+    </div>
   ),
 });

@@ -4,6 +4,7 @@ import { Popover } from "./Popover";
 import "./IconPicker.scss";
 import { isArrowKey, KEYS } from "../keys";
 import { getLanguage } from "../i18n";
+import clsx from "clsx";
 
 function Picker<T>({
   options,
@@ -88,6 +89,7 @@ function Picker<T>({
       onClose();
     }
     event.nativeEvent.stopImmediatePropagation();
+    event.stopPropagation();
   };
 
   return (
@@ -101,7 +103,9 @@ function Picker<T>({
       <div className="picker-content" ref={rGallery}>
         {options.map((option, i) => (
           <button
-            className="picker-option"
+            className={clsx("picker-option", {
+              active: value === option.value,
+            })}
             onClick={(event) => {
               (event.currentTarget as HTMLButtonElement).focus();
               onChange(option.value);
@@ -149,7 +153,7 @@ export function IconPicker<T>({
   const isRTL = getLanguage().rtl;
 
   return (
-    <label className={"picker-container"}>
+    <div>
       <button
         name={group}
         className={isActive ? "active" : ""}
@@ -183,6 +187,6 @@ export function IconPicker<T>({
           </>
         ) : null}
       </React.Suspense>
-    </label>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-import React from "react";
 import ReactDOM from "react-dom";
 import { render } from "./test-utils";
 import ExcalidrawApp from "../excalidraw-app";
@@ -12,6 +11,7 @@ import {
 } from "../actions";
 import { AppState } from "../types";
 import { API } from "./helpers/api";
+import { selectGroupsForSelectedElements } from "../groups";
 
 // Unmount ReactDOM from root
 ReactDOM.unmountComponentAtNode(document.getElementById("root")!);
@@ -33,11 +33,13 @@ const populateElements = (
     x?: number;
     width?: number;
     height?: number;
+    containerId?: string;
   }[],
+  appState?: Partial<AppState>,
 ) => {
   const selectedElementIds: any = {};
 
-  h.elements = elements.map(
+  const newElements = elements.map(
     ({
       id,
       isDeleted = false,
@@ -47,18 +49,19 @@ const populateElements = (
       x = 100,
       width = 100,
       height = 100,
+      containerId = null,
     }) => {
       const element = API.createElement({
-        type: "rectangle",
+        type: containerId ? "text" : "rectangle",
         id,
         isDeleted,
         x,
         y,
         width,
         height,
+        groupIds,
+        containerId,
       });
-      // @ts-ignore
-      element.groupIds = groupIds;
       if (isSelected) {
         selectedElementIds[element.id] = true;
       }
@@ -66,7 +69,30 @@ const populateElements = (
     },
   );
 
+  // initialize `boundElements` on containers, if applicable
+  h.elements = newElements.map((element, index, elements) => {
+    const nextElement = elements[index + 1];
+    if (
+      nextElement &&
+      "containerId" in nextElement &&
+      element.id === nextElement.containerId
+    ) {
+      return {
+        ...element,
+        boundElements: [{ type: "text", id: nextElement.id }],
+      };
+    }
+    return element;
+  });
+
   h.setState({
+    ...selectGroupsForSelectedElements(
+      { ...h.state, ...appState, selectedElementIds },
+      h.elements,
+      h.state,
+      null,
+    ),
+    ...appState,
     selectedElementIds,
   });
 
@@ -89,15 +115,12 @@ const assertZindex = ({
     isDeleted?: true;
     isSelected?: true;
     groupIds?: string[];
+    containerId?: string;
   }[];
   appState?: Partial<AppState>;
   operations: [Actions, string[]][];
 }) => {
-  const selectedElementIds = populateElements(elements);
-
-  h.setState({
-    editingGroupId: appState?.editingGroupId || null,
-  });
+  const selectedElementIds = populateElements(elements, appState);
 
   operations.forEach(([action, expected]) => {
     h.app.actionManager.executeAction(action);
@@ -866,9 +889,6 @@ describe("z-index manipulation", () => {
       { id: "A", groupIds: ["g1"], isSelected: true },
       { id: "B", groupIds: ["g1"], isSelected: true },
     ]);
-    h.setState({
-      selectedGroupIds: { g1: true },
-    });
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements).toMatchObject([
       { id: "A" },
@@ -890,9 +910,6 @@ describe("z-index manipulation", () => {
       { id: "B", groupIds: ["g1"], isSelected: true },
       { id: "C" },
     ]);
-    h.setState({
-      selectedGroupIds: { g1: true },
-    });
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements).toMatchObject([
       { id: "A" },
@@ -915,9 +932,6 @@ describe("z-index manipulation", () => {
       { id: "B", groupIds: ["g1"], isSelected: true },
       { id: "C", isSelected: true },
     ]);
-    h.setState({
-      selectedGroupIds: { g1: true },
-    });
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -934,9 +948,6 @@ describe("z-index manipulation", () => {
       { id: "C", groupIds: ["g2"], isSelected: true },
       { id: "D", groupIds: ["g2"], isSelected: true },
     ]);
-    h.setState({
-      selectedGroupIds: { g1: true, g2: true },
-    });
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -949,14 +960,16 @@ describe("z-index manipulation", () => {
       "D_copy",
     ]);
 
-    populateElements([
-      { id: "A", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "B", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "C", groupIds: ["g2"], isSelected: true },
-    ]);
-    h.setState({
-      selectedGroupIds: { g1: true },
-    });
+    populateElements(
+      [
+        { id: "A", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "B", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "C", groupIds: ["g2"], isSelected: true },
+      ],
+      {
+        selectedGroupIds: { g1: true },
+      },
+    );
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -967,14 +980,16 @@ describe("z-index manipulation", () => {
       "C_copy",
     ]);
 
-    populateElements([
-      { id: "A", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "B", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "C", groupIds: ["g2"], isSelected: true },
-    ]);
-    h.setState({
-      selectedGroupIds: { g2: true },
-    });
+    populateElements(
+      [
+        { id: "A", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "B", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "C", groupIds: ["g2"], isSelected: true },
+      ],
+      {
+        selectedGroupIds: { g2: true },
+      },
+    );
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -985,17 +1000,19 @@ describe("z-index manipulation", () => {
       "C_copy",
     ]);
 
-    populateElements([
-      { id: "A", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "B", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "C", groupIds: ["g2"], isSelected: true },
-      { id: "D", groupIds: ["g3", "g4"], isSelected: true },
-      { id: "E", groupIds: ["g3", "g4"], isSelected: true },
-      { id: "F", groupIds: ["g4"], isSelected: true },
-    ]);
-    h.setState({
-      selectedGroupIds: { g2: true, g4: true },
-    });
+    populateElements(
+      [
+        { id: "A", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "B", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "C", groupIds: ["g2"], isSelected: true },
+        { id: "D", groupIds: ["g3", "g4"], isSelected: true },
+        { id: "E", groupIds: ["g3", "g4"], isSelected: true },
+        { id: "F", groupIds: ["g4"], isSelected: true },
+      ],
+      {
+        selectedGroupIds: { g2: true, g4: true },
+      },
+    );
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -1012,11 +1029,14 @@ describe("z-index manipulation", () => {
       "F_copy",
     ]);
 
-    populateElements([
-      { id: "A", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "B", groupIds: ["g1", "g2"] },
-      { id: "C", groupIds: ["g2"] },
-    ]);
+    populateElements(
+      [
+        { id: "A", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "B", groupIds: ["g1", "g2"] },
+        { id: "C", groupIds: ["g2"] },
+      ],
+      { editingGroupId: "g1" },
+    );
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -1025,11 +1045,14 @@ describe("z-index manipulation", () => {
       "C",
     ]);
 
-    populateElements([
-      { id: "A", groupIds: ["g1", "g2"] },
-      { id: "B", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "C", groupIds: ["g2"] },
-    ]);
+    populateElements(
+      [
+        { id: "A", groupIds: ["g1", "g2"] },
+        { id: "B", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "C", groupIds: ["g2"] },
+      ],
+      { editingGroupId: "g1" },
+    );
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -1038,11 +1061,14 @@ describe("z-index manipulation", () => {
       "C",
     ]);
 
-    populateElements([
-      { id: "A", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "B", groupIds: ["g1", "g2"], isSelected: true },
-      { id: "C", groupIds: ["g2"], isSelected: true },
-    ]);
+    populateElements(
+      [
+        { id: "A", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "B", groupIds: ["g1", "g2"], isSelected: true },
+        { id: "C", groupIds: ["g2"] },
+      ],
+      { editingGroupId: "g1" },
+    );
     h.app.actionManager.executeAction(actionDuplicateSelection);
     expect(h.elements.map((element) => element.id)).toEqual([
       "A",
@@ -1050,7 +1076,111 @@ describe("z-index manipulation", () => {
       "B",
       "B_copy",
       "C",
+    ]);
+  });
+
+  it("duplicating incorrectly interleaved elements (group elements should be together) should still produce reasonable result", () => {
+    populateElements([
+      { id: "A", groupIds: ["g1"], isSelected: true },
+      { id: "B" },
+      { id: "C", groupIds: ["g1"], isSelected: true },
+    ]);
+    h.app.actionManager.executeAction(actionDuplicateSelection);
+    expect(h.elements.map((element) => element.id)).toEqual([
+      "A",
+      "C",
+      "A_copy",
       "C_copy",
+      "B",
     ]);
+  });
+
+  it("group-selected duplication should includes deleted elements that weren't selected on account of being deleted", () => {
+    populateElements([
+      { id: "A", groupIds: ["g1"], isDeleted: true },
+      { id: "B", groupIds: ["g1"], isSelected: true },
+      { id: "C", groupIds: ["g1"], isSelected: true },
+      { id: "D" },
+    ]);
+    expect(h.state.selectedGroupIds).toEqual({ g1: true });
+    h.app.actionManager.executeAction(actionDuplicateSelection);
+    expect(h.elements.map((element) => element.id)).toEqual([
+      "A",
+      "B",
+      "C",
+      "A_copy",
+      "B_copy",
+      "C_copy",
+      "D",
+    ]);
+  });
+
+  it("text-container binding should be atomic", () => {
+    assertZindex({
+      elements: [
+        { id: "A", isSelected: true },
+        { id: "B" },
+        { id: "C", containerId: "B" },
+      ],
+      operations: [
+        [actionBringForward, ["B", "C", "A"]],
+        [actionSendBackward, ["A", "B", "C"]],
+      ],
+    });
+
+    assertZindex({
+      elements: [
+        { id: "A" },
+        { id: "B", isSelected: true },
+        { id: "C", containerId: "B" },
+      ],
+      operations: [
+        [actionSendBackward, ["B", "C", "A"]],
+        [actionBringForward, ["A", "B", "C"]],
+      ],
+    });
+
+    assertZindex({
+      elements: [
+        { id: "A", isSelected: true, groupIds: ["g1"] },
+        { id: "B", groupIds: ["g1"] },
+        { id: "C", containerId: "B", groupIds: ["g1"] },
+      ],
+      appState: {
+        editingGroupId: "g1",
+      },
+      operations: [
+        [actionBringForward, ["B", "C", "A"]],
+        [actionSendBackward, ["A", "B", "C"]],
+      ],
+    });
+
+    assertZindex({
+      elements: [
+        { id: "A", groupIds: ["g1"] },
+        { id: "B", groupIds: ["g1"], isSelected: true },
+        { id: "C", containerId: "B", groupIds: ["g1"] },
+      ],
+      appState: {
+        editingGroupId: "g1",
+      },
+      operations: [
+        [actionSendBackward, ["B", "C", "A"]],
+        [actionBringForward, ["A", "B", "C"]],
+      ],
+    });
+
+    assertZindex({
+      elements: [
+        { id: "A", groupIds: ["g1"] },
+        { id: "B", isSelected: true, groupIds: ["g1"] },
+        { id: "C" },
+        { id: "D", containerId: "C" },
+      ],
+      appState: {
+        editingGroupId: "g1",
+      },
+      operations: [[actionBringForward, ["A", "B", "C", "D"]]],
+    });
   });
 });

@@ -3,25 +3,46 @@ import {
   ExcalidrawGenericElement,
   ExcalidrawTextElement,
   ExcalidrawLinearElement,
+  ExcalidrawFreeDrawElement,
+  ExcalidrawImageElement,
+  FileId,
 } from "../../element/types";
 import { newElement, newTextElement, newLinearElement } from "../../element";
-import { DEFAULT_VERTICAL_ALIGN } from "../../constants";
+import { DEFAULT_VERTICAL_ALIGN, ROUNDNESS } from "../../constants";
 import { getDefaultAppState } from "../../appState";
 import { GlobalTestState, createEvent, fireEvent } from "../test-utils";
 import fs from "fs";
 import util from "util";
 import path from "path";
 import { getMimeType } from "../../data/blob";
+import { newFreeDrawElement, newImageElement } from "../../element/newElement";
+import { Point } from "../../types";
+import { getSelectedElements } from "../../scene/selection";
+import { isLinearElementType } from "../../element/typeChecks";
+import { Mutable } from "../../utility-types";
 
 const readFile = util.promisify(fs.readFile);
 
 const { h } = window;
 
 export class API {
-  static getSelectedElements = (): ExcalidrawElement[] => {
-    return h.elements.filter(
-      (element) => h.state.selectedElementIds[element.id],
-    );
+  static setSelectedElements = (elements: ExcalidrawElement[]) => {
+    h.setState({
+      selectedElementIds: elements.reduce((acc, element) => {
+        acc[element.id] = true;
+        return acc;
+      }, {} as Record<ExcalidrawElement["id"], true>),
+    });
+  };
+
+  static getSelectedElements = (
+    includeBoundTextElement: boolean = false,
+    includeElementsInFrames: boolean = false,
+  ): ExcalidrawElement[] => {
+    return getSelectedElements(h.elements, h.state, {
+      includeBoundTextElement,
+      includeElementsInFrames,
+    });
   };
 
   static getSelectedElement = (): ExcalidrawElement => {
@@ -46,31 +67,35 @@ export class API {
   };
 
   static createElement = <
-    T extends Exclude<ExcalidrawElement["type"], "selection">
+    T extends Exclude<ExcalidrawElement["type"], "selection"> = "rectangle",
   >({
-    type,
+    // @ts-ignore
+    type = "rectangle",
     id,
     x = 0,
     y = x,
     width = 100,
     height = width,
     isDeleted = false,
+    groupIds = [],
     ...rest
   }: {
-    type: T;
+    type?: T;
     x?: number;
     y?: number;
     height?: number;
     width?: number;
+    angle?: number;
     id?: string;
     isDeleted?: boolean;
+    groupIds?: string[];
     // generic element props
     strokeColor?: ExcalidrawGenericElement["strokeColor"];
     backgroundColor?: ExcalidrawGenericElement["backgroundColor"];
     fillStyle?: ExcalidrawGenericElement["fillStyle"];
     strokeWidth?: ExcalidrawGenericElement["strokeWidth"];
     strokeStyle?: ExcalidrawGenericElement["strokeStyle"];
-    strokeSharpness?: ExcalidrawGenericElement["strokeSharpness"];
+    roundness?: ExcalidrawGenericElement["roundness"];
     roughness?: ExcalidrawGenericElement["roughness"];
     opacity?: ExcalidrawGenericElement["opacity"];
     // text props
@@ -81,66 +106,147 @@ export class API {
     verticalAlign?: T extends "text"
       ? ExcalidrawTextElement["verticalAlign"]
       : never;
-  }): T extends "arrow" | "line" | "draw"
+    boundElements?: ExcalidrawGenericElement["boundElements"];
+    containerId?: T extends "text"
+      ? ExcalidrawTextElement["containerId"]
+      : never;
+    points?: T extends "arrow" | "line" ? readonly Point[] : never;
+    locked?: boolean;
+    fileId?: T extends "image" ? string : never;
+    scale?: T extends "image" ? ExcalidrawImageElement["scale"] : never;
+    status?: T extends "image" ? ExcalidrawImageElement["status"] : never;
+    startBinding?: T extends "arrow"
+      ? ExcalidrawLinearElement["startBinding"]
+      : never;
+    endBinding?: T extends "arrow"
+      ? ExcalidrawLinearElement["endBinding"]
+      : never;
+  }): T extends "arrow" | "line"
     ? ExcalidrawLinearElement
+    : T extends "freedraw"
+    ? ExcalidrawFreeDrawElement
     : T extends "text"
     ? ExcalidrawTextElement
+    : T extends "image"
+    ? ExcalidrawImageElement
     : ExcalidrawGenericElement => {
     let element: Mutable<ExcalidrawElement> = null!;
 
     const appState = h?.state || getDefaultAppState();
 
-    const base = {
+    const base: Omit<
+      ExcalidrawGenericElement,
+      | "id"
+      | "width"
+      | "height"
+      | "type"
+      | "seed"
+      | "version"
+      | "versionNonce"
+      | "isDeleted"
+      | "groupIds"
+      | "frameId"
+      | "link"
+      | "updated"
+    > = {
       x,
       y,
+      angle: rest.angle ?? 0,
       strokeColor: rest.strokeColor ?? appState.currentItemStrokeColor,
       backgroundColor:
         rest.backgroundColor ?? appState.currentItemBackgroundColor,
       fillStyle: rest.fillStyle ?? appState.currentItemFillStyle,
       strokeWidth: rest.strokeWidth ?? appState.currentItemStrokeWidth,
       strokeStyle: rest.strokeStyle ?? appState.currentItemStrokeStyle,
-      strokeSharpness:
-        rest.strokeSharpness ?? appState.currentItemStrokeSharpness,
+      roundness: (
+        rest.roundness === undefined
+          ? appState.currentItemRoundness === "round"
+          : rest.roundness
+      )
+        ? {
+            type: isLinearElementType(type)
+              ? ROUNDNESS.PROPORTIONAL_RADIUS
+              : ROUNDNESS.ADAPTIVE_RADIUS,
+          }
+        : null,
       roughness: rest.roughness ?? appState.currentItemRoughness,
       opacity: rest.opacity ?? appState.currentItemOpacity,
+      boundElements: rest.boundElements ?? null,
+      locked: rest.locked ?? false,
     };
     switch (type) {
       case "rectangle":
       case "diamond":
       case "ellipse":
+      case "embeddable":
         element = newElement({
-          type: type as "rectangle" | "diamond" | "ellipse",
+          type: type as "rectangle" | "diamond" | "ellipse" | "embeddable",
           width,
           height,
           ...base,
         });
         break;
       case "text":
+        const fontSize = rest.fontSize ?? appState.currentItemFontSize;
+        const fontFamily = rest.fontFamily ?? appState.currentItemFontFamily;
         element = newTextElement({
           ...base,
           text: rest.text || "test",
-          fontSize: rest.fontSize ?? appState.currentItemFontSize,
-          fontFamily: rest.fontFamily ?? appState.currentItemFontFamily,
+          fontSize,
+          fontFamily,
           textAlign: rest.textAlign ?? appState.currentItemTextAlign,
           verticalAlign: rest.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
+          containerId: rest.containerId ?? undefined,
+        });
+        element.width = width;
+        element.height = height;
+        break;
+      case "freedraw":
+        element = newFreeDrawElement({
+          type: type as "freedraw",
+          simulatePressure: true,
+          ...base,
         });
         break;
       case "arrow":
       case "line":
-      case "draw":
         element = newLinearElement({
-          type: type as "arrow" | "line" | "draw",
+          ...base,
+          width,
+          height,
+          type,
           startArrowhead: null,
           endArrowhead: null,
-          ...base,
+          points: rest.points ?? [
+            [0, 0],
+            [100, 100],
+          ],
         });
         break;
+      case "image":
+        element = newImageElement({
+          ...base,
+          width,
+          height,
+          type,
+          fileId: (rest.fileId as string as FileId) ?? null,
+          status: rest.status || "saved",
+          scale: rest.scale || [1, 1],
+        });
+        break;
+    }
+    if (element.type === "arrow") {
+      element.startBinding = rest.startBinding ?? null;
+      element.endBinding = rest.endBinding ?? null;
     }
     if (id) {
       element.id = id;
     }
     if (isDeleted) {
       element.isDeleted = isDeleted;
+    }
+    if (groupIds) {
+      element.groupIds = groupIds;
     }
     return element as any;
   };
@@ -171,14 +277,17 @@ export class API {
           resolve(reader.result as string);
         };
         reader.readAsText(blob);
-      } catch (error) {
+      } catch (error: any) {
         reject(error);
       }
     });
 
+    const files = [blob] as File[] & { item: (index: number) => File };
+    files.item = (index: number) => files[index];
+
     Object.defineProperty(fileDropEvent, "dataTransfer", {
       value: {
-        files: [blob],
+        files,
         getData: (type: string) => {
           if (type === blob.type) {
             return text;

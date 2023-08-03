@@ -1,6 +1,7 @@
 {
   "labels": {
     "paste": "Постави",
+    "pasteAsPlaintext": "",
     "pasteCharts": "Постави графики",
     "selectAll": "Маркирай всичко",
     "multiSelect": "Добави елемент към селекция",
@@ -9,6 +10,7 @@
     "copy": "Копирай",
     "copyAsPng": "Копиране в клипборда",
     "copyAsSvg": "Копирано в клипборда като SVG",
+    "copyText": "",
     "bringForward": "Преместване напред",
     "sendToBack": "Изнасяне назад",
     "bringToFront": "Изнасяне отпред",
@@ -35,12 +37,9 @@
     "arrowhead_arrow": "Стрелка",
     "arrowhead_bar": "Връх на стрелката",
     "arrowhead_dot": "Точка",
+    "arrowhead_triangle": "Триъгълник",
     "fontSize": "Размер на шрифта",
     "fontFamily": "Семейство шрифтове",
-    "onlySelected": "Само избраното",
-    "withBackground": "С фон",
-    "exportEmbedScene": "Вгради сцената във файл",
-    "exportEmbedScene_details": "Данните от сцената ще бъдат екпортирани в PNG/SVG файл, за да може сцената да бъде възстановена от него.\nТова ще увеличи размера на файла.",
     "addWatermark": "Добави \"Направено с Excalidraw\"",
     "handDrawn": "Нарисувано на ръка",
     "normal": "Нормален",
@@ -51,6 +50,7 @@
     "veryLarge": "Много голям",
     "solid": "Солиден",
     "hachure": "Хералдика",
+    "zigzag": "",
     "crossHatch": "Двойно-пресечено",
     "thin": "Тънък",
     "bold": "Ясно очертан",
@@ -61,8 +61,9 @@
     "architect": "Архитект",
     "artist": "Художник",
     "cartoonist": "Карикатурист",
-    "fileTitle": "Заглавие на файл",
+    "fileTitle": "Име на файл",
     "colorPicker": "Избор на цвят",
+    "canvasColors": "",
     "canvasBackground": "Фон на платно",
     "drawingCanvas": "Платно за рисуване",
     "layers": "Слоеве",
@@ -92,19 +93,55 @@
     "centerHorizontally": "Центрирай хоризонтално",
     "distributeHorizontally": "Разпредели хоризонтално",
     "distributeVertically": "Разпредели вертикално",
-    "viewMode": "Изглед"
+    "flipHorizontal": "Хоризонтално обръщане",
+    "flipVertical": "Вертикално обръщане",
+    "viewMode": "Изглед",
+    "share": "Сподели",
+    "showStroke": "",
+    "showBackground": "",
+    "toggleTheme": "",
+    "personalLib": "",
+    "excalidrawLib": "",
+    "decreaseFontSize": "",
+    "increaseFontSize": "",
+    "unbindText": "",
+    "bindText": "",
+    "createContainerFromText": "",
+    "link": {
+      "edit": "",
+      "create": "",
+      "label": ""
+    },
+    "lineEditor": {
+      "edit": "",
+      "exit": ""
+    },
+    "elementLock": {
+      "lock": "",
+      "unlock": "",
+      "lockAll": "",
+      "unlockAll": ""
+    },
+    "statusPublished": "",
+    "sidebarLock": "",
+    "selectAllElementsInFrame": "",
+    "removeAllElementsFromFrame": "",
+    "eyeDropper": ""
+  },
+  "library": {
+    "noItems": "",
+    "hint_emptyLibrary": "",
+    "hint_emptyPrivateLibrary": ""
   },
   "buttons": {
     "clearReset": "Нулиране на платно",
-    "export": "Експортиране",
-    "exportToPng": "Изнасяне в PNG",
-    "exportToSvg": "Изнасяне в SVG",
+    "exportJSON": "",
+    "exportImage": "",
+    "export": "",
     "copyToClipboard": "Копиране в клипборда",
-    "copyPngToClipboard": "Копирай PNG в клипборда",
-    "scale": "Мащаб",
-    "save": "Запази",
+    "save": "",
     "saveAs": "Запиши като",
-    "load": "Зареждане",
+    "load": "",
     "getShareableLink": "Получаване на връзка за споделяне",
     "close": "Затвори",
     "selectLanguage": "Избор на език",
@@ -117,13 +154,19 @@
     "edit": "Редактиране",
     "undo": "Отмяна",
     "redo": "Повтори",
-    "resetLibrary": "",
+    "resetLibrary": "Нулиране на библиотеката",
     "createNewRoom": "Създай нова стая",
     "fullScreen": "На цял екран",
     "darkMode": "Тъмен режим",
     "lightMode": "Светъл режим",
     "zenMode": "Режим Zen",
-    "exitZenMode": "Спиране на Zen режим"
+    "exitZenMode": "Спиране на Zen режим",
+    "cancel": "Отмени",
+    "clear": "Изчисти",
+    "remove": "Премахване",
+    "publishLibrary": "Публикувай",
+    "submit": "Изпрати",
+    "confirm": "Потвърждаване"
   },
   "alerts": {
     "clearReset": "Това ще изчисти цялото платно. Сигурни ли сте?",
@@ -132,28 +175,57 @@
     "couldNotLoadInvalidFile": "Невалиден файл не може да се зареди",
     "importBackendFailed": "Импортирането от бекенд не беше успешно.",
     "cannotExportEmptyCanvas": "Не може да се експортира празно платно.",
-    "couldNotCopyToClipboard": "Неуспешно копиране в клипборда. Опитайте да използвате браузъра Chrome.",
+    "couldNotCopyToClipboard": "",
     "decryptFailed": "Данните не можаха да се дешифрират.",
     "uploadedSecurly": "Качването е защитено с криптиране от край до край, което означава, че сървърът Excalidraw и трети страни не могат да четат съдържанието.",
     "loadSceneOverridePrompt": "Зареждането на външна рисунка ще презапише настоящото ви съдържание. Желаете ли да продължите?",
     "collabStopOverridePrompt": "Прекратяването на сесията ще презапише предишната, локално запазена, рисунка. Сигурни ли сте?\n\n(Ако искате да продължите с локалната рисунка, просто затворете таба на браузъра.)",
-    "errorLoadingLibrary": "Възникна грешка при зареждането на външна библиотека.",
+    "errorAddingToLibrary": "",
+    "errorRemovingFromLibrary": "",
     "confirmAddLibrary": "Ще се добавят {{numShapes}} фигура(и) във вашата библиотека. Сигурни ли сте?",
-    "imageDoesNotContainScene": "Импортирането на картинки не се поддържва в момента.\n\nИскате да импортнете сцена? Тази картинка не съдържа данни от сцена. Разрешили ли сте последното при експортирането?",
+    "imageDoesNotContainScene": "",
     "cannotRestoreFromImage": "Не може да бъде възстановена сцена от този файл",
-    "resetLibrary": ""
+    "invalidSceneUrl": "",
+    "resetLibrary": "",
+    "removeItemsFromsLibrary": "",
+    "invalidEncryptionKey": "",
+    "collabOfflineWarning": ""
+  },
+  "errors": {
+    "unsupportedFileType": "Този файлов формат не се поддържа.",
+    "imageInsertError": "",
+    "fileTooBig": "",
+    "svgImageInsertError": "",
+    "invalidSVGString": "",
+    "cannotResolveCollabServer": "",
+    "importLibraryError": "",
+    "collabSaveFailed": "",
+    "collabSaveFailed_sizeExceeded": "",
+    "brave_measure_text_error": {
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "line4": ""
+    }
   },
   "toolBar": {
     "selection": "Селекция",
-    "draw": "Рисуване",
+    "image": "Вмъкване на изображение",
     "rectangle": "Правоъгълник",
     "diamond": "Диамант",
     "ellipse": "Елипс",
     "arrow": "Стрелка",
     "line": "Линия",
+    "freedraw": "Рисуване",
     "text": "Текст",
     "library": "Библиотека",
-    "lock": "Поддържайте избрания инструмент активен след рисуване"
+    "lock": "Поддържайте избрания инструмент активен след рисуване",
+    "penMode": "",
+    "link": "",
+    "eraser": "",
+    "frame": "",
+    "hand": "",
+    "extraTools": ""
   },
   "headings": {
     "canvasActions": "Действия по платното",
@@ -161,16 +233,26 @@
     "shapes": "Фигури"
   },
   "hints": {
+    "canvasPanning": "",
     "linearElement": "Кликнете, за да стартирате няколко точки, плъзнете за една линия",
     "freeDraw": "Натиснете и влачете, пуснете като сте готови",
     "text": "Подсказка: Можете също да добавите текст като натиснете някъде два път с инструмента за селекция",
+    "text_selected": "",
+    "text_editing": "",
     "linearElementMulti": "Кликнете върху последната точка или натиснете Escape или Enter, за да завършите",
     "lockAngle": "Можете да ограничите ъгъла, като задържите SHIFT",
     "resize": "Може да ограничите при преоразмеряване като задържите SHIFT,\nзадръжте ALT за преоразмерите през центъра",
+    "resizeImage": "",
     "rotate": "Можете да ограничите ъглите, като държите SHIFT, докато се въртите",
-    "lineEditor_info": "Кликнете два пъти или натиснете Enter за да промените точките",
-    "lineEditor_pointSelected": "Натиснете Delete за да изтриете точка, CtrlOrCmd+D за дуплициране, или извлачете за да преместите",
-    "lineEditor_nothingSelected": "Изберете точка за местене или изтриване, или пък задръжте Alt и натиснете за да добавите нови точки"
+    "lineEditor_info": "",
+    "lineEditor_pointSelected": "Натиснете Delete за да изтриете точка(и), CtrlOrCmd+D за дуплициране, или извлачете за да преместите",
+    "lineEditor_nothingSelected": "",
+    "placeImage": "",
+    "publishLibrary": "",
+    "bindTextToElement": "Натиснете Enter, за да добавите",
+    "deepBoxSelect": "",
+    "eraserRevert": "",
+    "firefox_clipboard_write": ""
   },
   "canvasError": {
     "cannotShowPreview": "Невъзможност за показване на preview",
@@ -178,16 +260,11 @@
     "canvasTooBigTip": "Подсказка: пробвайте да приближите далечните елементи по-близко."
   },
   "errorSplash": {
-    "headingMain_pre": "Среща грешка. Опитайте ",
-    "headingMain_button": "презареждане на страницата.",
-    "clearCanvasMessage": "Ако презареждането не работи, опитайте ",
-    "clearCanvasMessage_button": "изчистване на платното.",
+    "headingMain": "Среща грешка. Опитайте <button>презареждане на страницата.</button>",
+    "clearCanvasMessage": "Ако презареждането не работи, опитайте <button>изчистване на платното.</button>",
     "clearCanvasCaveat": " Това ще доведе до загуба на работа ",
-    "trackedToSentry_pre": "Грешката с идентификатор ",
-    "trackedToSentry_post": " беше проследен в нашата система.",
-    "openIssueMessage_pre": "Бяхме много предпазливи да не включите информацията за вашата сцена при грешката. Ако сцената ви не е частна, моля, помислете за последващи действия на нашата ",
-    "openIssueMessage_button": "тракер за грешки.",
-    "openIssueMessage_post": " Моля, включете информация по-долу, като я копирате и добавите в GitHub.",
+    "trackedToSentry": "Грешката с идентификатор {{eventId}} беше проследен в нашата система.",
+    "openIssueMessage": "Бяхме много предпазливи да не включите информацията за вашата сцена при грешката. Ако сцената ви не е частна, моля, помислете за последващи действия на нашата <button>тракер за грешки.</button> Моля, включете информация по-долу, като я копирате и добавите в GitHub.",
     "sceneContent": "Съдържание на сцената:"
   },
   "roomDialog": {
@@ -197,34 +274,118 @@
     "button_stopSession": "Стоп на сесията",
     "desc_inProgressIntro": "Сесията за сътрудничество на живо е в ход.",
     "desc_shareLink": "Споделете тази връзка с всеки, с когото искате да си сътрудничите:",
-    "desc_exitSession": "Спирането на сесията ще ви изключи от стаята, но ще можете да продължите да работите със сцената, локално. Имайте предвид, че това няма да засегне други хора и те все още ще могат да си сътрудничат с тяхната версия."
+    "desc_exitSession": "Спирането на сесията ще ви изключи от стаята, но ще можете да продължите да работите със сцената, локално. Имайте предвид, че това няма да засегне други хора и те все още ще могат да си сътрудничат с тяхната версия.",
+    "shareTitle": ""
   },
   "errorDialog": {
     "title": "Грешка"
   },
+  "exportDialog": {
+    "disk_title": "",
+    "disk_details": "",
+    "disk_button": "",
+    "link_title": "",
+    "link_details": "",
+    "link_button": "",
+    "excalidrawplus_description": "",
+    "excalidrawplus_button": "",
+    "excalidrawplus_exportError": ""
+  },
   "helpDialog": {
     "blog": "Прочетете нашия блог",
     "click": "клик",
+    "deepSelect": "",
+    "deepBoxSelect": "",
     "curvedArrow": "Извита стрелка",
     "curvedLine": "Извита линия",
     "documentation": "Документация",
+    "doubleClick": "",
     "drag": "плъзнете",
     "editor": "Редактор",
+    "editLineArrowPoints": "",
+    "editText": "",
     "github": "Намерихте проблем? Изпратете",
     "howto": "Следвайте нашите ръководства",
     "or": "или",
     "preventBinding": "Спри прилепяне на стрелките",
-    "shapes": "Фигури",
+    "tools": "",
     "shortcuts": "Клавиши за бърз достъп",
-    "textFinish": "Завършете редактирането (текст)",
-    "textNewLine": "Добавяне на нов ред (текст)",
+    "textFinish": "",
+    "textNewLine": "",
     "title": "Помощ",
     "view": "Преглед",
     "zoomToFit": "Приближи докато се виждат всички елементи",
-    "zoomToSelection": "Приближи селекцията"
+    "zoomToSelection": "Приближи селекцията",
+    "toggleElementLock": "",
+    "movePageUpDown": "",
+    "movePageLeftRight": ""
+  },
+  "clearCanvasDialog": {
+    "title": ""
+  },
+  "publishDialog": {
+    "title": "",
+    "itemName": "",
+    "authorName": "",
+    "githubUsername": "",
+    "twitterUsername": "",
+    "libraryName": "",
+    "libraryDesc": "",
+    "website": "",
+    "placeholder": {
+      "authorName": "",
+      "libraryName": "",
+      "libraryDesc": "",
+      "githubHandle": "",
+      "twitterHandle": "",
+      "website": ""
+    },
+    "errors": {
+      "required": "",
+      "website": ""
+    },
+    "noteDescription": "",
+    "noteGuidelines": "",
+    "noteLicense": "",
+    "noteItems": "",
+    "atleastOneLibItem": "",
+    "republishWarning": ""
+  },
+  "publishSuccessDialog": {
+    "title": "",
+    "content": ""
+  },
+  "confirmDialog": {
+    "resetLibrary": "",
+    "removeItemsFromLib": ""
+  },
+  "imageExportDialog": {
+    "header": "",
+    "label": {
+      "withBackground": "",
+      "onlySelected": "",
+      "darkMode": "",
+      "embedScene": "",
+      "scale": "",
+      "padding": ""
+    },
+    "tooltip": {
+      "embedScene": ""
+    },
+    "title": {
+      "exportToPng": "",
+      "exportToSvg": "",
+      "copyPngToClipboard": ""
+    },
+    "button": {
+      "exportToPng": "",
+      "exportToSvg": "",
+      "copyPngToClipboard": ""
+    }
   },
   "encrypted": {
-    "tooltip": "Вашите рисунки са криптирани от край до край, така че сървърите на Excalidraw няма да могат да ги виждат."
+    "tooltip": "Вашите рисунки са криптирани от край до край, така че сървърите на Excalidraw няма да могат да ги виждат.",
+    "link": ""
   },
   "stats": {
     "angle": "Ъгъл",
@@ -242,10 +403,51 @@
     "width": "Широчина"
   },
   "toast": {
+    "addedToLibrary": "",
     "copyStyles": "Копирани стилове.",
     "copyToClipboard": "Копирано в клипборда.",
-    "copyToClipboardAsPng": "Копирано в клипборда като PNG.",
+    "copyToClipboardAsPng": "",
     "fileSaved": "",
-    "fileSavedToFilename": ""
+    "fileSavedToFilename": "",
+    "canvas": "",
+    "selection": "",
+    "pasteAsSingleElement": ""
+  },
+  "colors": {
+    "transparent": "",
+    "black": "",
+    "white": "",
+    "red": "",
+    "pink": "",
+    "grape": "",
+    "violet": "",
+    "gray": "",
+    "blue": "",
+    "cyan": "",
+    "teal": "",
+    "green": "",
+    "yellow": "",
+    "orange": "",
+    "bronze": ""
+  },
+  "welcomeScreen": {
+    "app": {
+      "center_heading": "",
+      "center_heading_plus": "",
+      "menuHint": ""
+    },
+    "defaults": {
+      "menuHint": "",
+      "center_heading": "",
+      "toolbarHint": "",
+      "helpHint": ""
+    }
+  },
+  "colorPicker": {
+    "mostUsedCustomColors": "",
+    "colors": "",
+    "shades": "",
+    "hexCode": "",
+    "noShades": ""
   }
 }

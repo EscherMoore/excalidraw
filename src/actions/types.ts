@@ -1,14 +1,27 @@
 import React from "react";
 import { ExcalidrawElement } from "../element/types";
-import { AppState } from "../types";
+import {
+  AppClassProperties,
+  AppState,
+  ExcalidrawProps,
+  BinaryFiles,
+} from "../types";
+import { MarkOptional } from "../utility-types";
+
+export type ActionSource = "ui" | "keyboard" | "contextMenu" | "api";
 
 /** if false, the action should be prevented */
 export type ActionResult =
   | {
       elements?: readonly ExcalidrawElement[] | null;
-      appState?: MarkOptional<AppState, "offsetTop" | "offsetLeft"> | null;
+      appState?: MarkOptional<
+        AppState,
+        "offsetTop" | "offsetLeft" | "width" | "height"
+      > | null;
+      files?: BinaryFiles | null;
       commitToHistory: boolean;
       syncHistory?: boolean;
+      replaceFiles?: boolean;
     }
   | false;
 
@@ -16,7 +29,7 @@ type ActionFn = (
   elements: readonly ExcalidrawElement[],
   appState: Readonly<AppState>,
   formData: any,
-  app: { canvas: HTMLCanvasElement | null },
+  app: AppClassProperties,
 ) => ActionResult | Promise<ActionResult>;
 
 export type UpdaterFn = (res: ActionResult) => void;
@@ -28,6 +41,7 @@ export type ActionName =
   | "paste"
   | "copyAsPng"
   | "copyAsSvg"
+  | "copyText"
   | "sendBackward"
   | "bringForward"
   | "sendToBack"
@@ -42,6 +56,7 @@ export type ActionName =
   | "changeBackgroundColor"
   | "changeFillStyle"
   | "changeStrokeWidth"
+  | "changeStrokeShape"
   | "changeSloppiness"
   | "changeStrokeStyle"
   | "changeArrowhead"
@@ -55,9 +70,9 @@ export type ActionName =
   | "changeProjectName"
   | "changeExportBackground"
   | "changeExportEmbedScene"
-  | "changeShouldAddWatermark"
-  | "saveScene"
-  | "saveAsScene"
+  | "changeExportScale"
+  | "saveToActiveFile"
+  | "saveFileToDisk"
   | "loadScene"
   | "duplicateSelection"
   | "deleteSelectedElements"
@@ -67,16 +82,18 @@ export type ActionName =
   | "zoomOut"
   | "resetZoom"
   | "zoomToFit"
-  | "zoomToSelection"
+  | "zoomToFitSelection"
+  | "zoomToFitSelectionInViewport"
   | "changeFontFamily"
   | "changeTextAlign"
+  | "changeVerticalAlign"
   | "toggleFullScreen"
   | "toggleShortcuts"
   | "group"
   | "ungroup"
   | "goToCollaborator"
   | "addToLibrary"
-  | "changeSharpness"
+  | "changeRoundness"
   | "alignTop"
   | "alignBottom"
   | "alignLeft"
@@ -85,34 +102,83 @@ export type ActionName =
   | "alignHorizontallyCentered"
   | "distributeHorizontally"
   | "distributeVertically"
-  | "viewMode";
+  | "flipHorizontal"
+  | "flipVertical"
+  | "viewMode"
+  | "exportWithDarkMode"
+  | "toggleTheme"
+  | "increaseFontSize"
+  | "decreaseFontSize"
+  | "unbindText"
+  | "hyperlink"
+  | "bindText"
+  | "unlockAllElements"
+  | "toggleElementLock"
+  | "toggleLinearEditor"
+  | "toggleEraserTool"
+  | "toggleHandTool"
+  | "selectAllElementsInFrame"
+  | "removeAllElementsFromFrame"
+  | "updateFrameRendering"
+  | "setFrameAsActiveTool"
+  | "setEmbeddableAsActiveTool"
+  | "createContainerFromText"
+  | "wrapTextInContainer";
+
+export type PanelComponentProps = {
+  elements: readonly ExcalidrawElement[];
+  appState: AppState;
+  updateData: (formData?: any) => void;
+  appProps: ExcalidrawProps;
+  data?: Record<string, any>;
+  app: AppClassProperties;
+};
 
 export interface Action {
   name: ActionName;
-  PanelComponent?: React.FC<{
-    elements: readonly ExcalidrawElement[];
-    appState: AppState;
-    updateData: (formData?: any) => void;
-    id?: string;
-  }>;
+  PanelComponent?: React.FC<PanelComponentProps>;
   perform: ActionFn;
   keyPriority?: number;
   keyTest?: (
-    event: KeyboardEvent,
+    event: React.KeyboardEvent | KeyboardEvent,
     appState: AppState,
     elements: readonly ExcalidrawElement[],
+    app: AppClassProperties,
   ) => boolean;
-  contextItemLabel?: string;
-  contextItemPredicate?: (
+  contextItemLabel?:
+    | string
+    | ((
+        elements: readonly ExcalidrawElement[],
+        appState: Readonly<AppState>,
+        app: AppClassProperties,
+      ) => string);
+  predicate?: (
     elements: readonly ExcalidrawElement[],
     appState: AppState,
+    appProps: ExcalidrawProps,
+    app: AppClassProperties,
   ) => boolean;
   checked?: (appState: Readonly<AppState>) => boolean;
-}
-
-export interface ActionsManagerInterface {
-  actions: Record<ActionName, Action>;
-  registerAction: (action: Action) => void;
-  handleKeyDown: (event: KeyboardEvent) => boolean;
-  renderAction: (name: ActionName) => React.ReactElement | null;
+  trackEvent:
+    | false
+    | {
+        category:
+          | "toolbar"
+          | "element"
+          | "canvas"
+          | "export"
+          | "history"
+          | "menu"
+          | "collab"
+          | "hyperlink";
+        action?: string;
+        predicate?: (
+          appState: Readonly<AppState>,
+          elements: readonly ExcalidrawElement[],
+          value: any,
+        ) => boolean;
+      };
+  /** if set to `true`, allow action to be performed in viewMode.
+   *  Defaults to `false` */
+  viewMode?: boolean;
 }

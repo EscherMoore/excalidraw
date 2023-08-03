@@ -2,15 +2,17 @@ import React, { useState } from "react";
 import { t } from "../i18n";
 
 import { Dialog } from "./Dialog";
+import { useExcalidrawContainer } from "./App";
 
 export const ErrorDialog = ({
-  message,
+  children,
   onClose,
 }: {
-  message: string;
+  children?: React.ReactNode;
   onClose?: () => void;
 }) => {
-  const [modalIsShown, setModalIsShown] = useState(!!message);
+  const [modalIsShown, setModalIsShown] = useState(!!children);
+  const { container: excalidrawContainer } = useExcalidrawContainer();
 
   const handleClose = React.useCallback(() => {
     setModalIsShown(false);
@@ -18,24 +20,19 @@ export const ErrorDialog = ({
     if (onClose) {
       onClose();
     }
-  }, [onClose]);
+    // TODO: Fix the A11y issues so this is never needed since we should always focus on last active element
+    excalidrawContainer?.focus();
+  }, [onClose, excalidrawContainer]);
 
   return (
     <>
       {modalIsShown && (
         <Dialog
-          small
+          size="small"
           onCloseRequest={handleClose}
           title={t("errorDialog.title")}
         >
-          <div>
-            {message.split("\n").map((line) => (
-              <>
-                {line}
-                <br />
-              </>
-            ))}
-          </div>
+          <div style={{ whiteSpace: "pre-wrap" }}>{children}</div>
         </Dialog>
       )}
     </>

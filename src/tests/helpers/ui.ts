@@ -3,9 +3,10 @@ import {
   ExcalidrawLinearElement,
   ExcalidrawTextElement,
 } from "../../element/types";
-import { CODES } from "../../keys";
+import { KEYS } from "../../keys";
 import { ToolName } from "../queries/toolQueries";
 import { fireEvent, GlobalTestState } from "../test-utils";
+import { mutateElement } from "../../element/mutateElement";
 import { API } from "./api";
 
 const { h } = window;
@@ -86,8 +87,8 @@ export class Keyboard {
 }
 
 export class Pointer {
-  private clientX = 0;
-  private clientY = 0;
+  public clientX = 0;
+  public clientY = 0;
 
   constructor(
     private readonly pointerType: "mouse" | "touch" | "pen",
@@ -121,6 +122,9 @@ export class Pointer {
     };
   }
 
+  // incremental (moving by deltas)
+  // ---------------------------------------------------------------------------
+
   move(dx: number, dy: number) {
     if (dx !== 0 || dy !== 0) {
       this.clientX += dx;
@@ -148,6 +152,47 @@ export class Pointer {
     this.move(dx, dy);
     fireEvent.doubleClick(GlobalTestState.canvas, this.getEvent());
   }
+
+  // absolute coords
+  // ---------------------------------------------------------------------------
+
+  moveTo(x: number = this.clientX, y: number = this.clientY) {
+    this.clientX = x;
+    this.clientY = y;
+    fireEvent.pointerMove(GlobalTestState.canvas, this.getEvent());
+  }
+
+  downAt(x = this.clientX, y = this.clientY) {
+    this.clientX = x;
+    this.clientY = y;
+    fireEvent.pointerDown(GlobalTestState.canvas, this.getEvent());
+  }
+
+  upAt(x = this.clientX, y = this.clientY) {
+    this.clientX = x;
+    this.clientY = y;
+    fireEvent.pointerUp(GlobalTestState.canvas, this.getEvent());
+  }
+
+  clickAt(x: number, y: number) {
+    this.downAt(x, y);
+    this.upAt();
+  }
+
+  rightClickAt(x: number, y: number) {
+    fireEvent.contextMenu(GlobalTestState.canvas, {
+      button: 2,
+      clientX: x,
+      clientY: y,
+    });
+  }
+
+  doubleClickAt(x: number, y: number) {
+    this.moveTo(x, y);
+    fireEvent.doubleClick(GlobalTestState.canvas, this.getEvent());
+  }
+
+  // ---------------------------------------------------------------------------
 
   select(
     /** if multiple elements supplied, they're shift-selected */
@@ -184,6 +229,23 @@ export class UI {
     fireEvent.click(GlobalTestState.renderResult.getByToolName(toolName));
   };
 
+  static clickLabeledElement = (label: string) => {
+    const element = document.querySelector(`[aria-label='${label}']`);
+    if (!element) {
+      throw new Error(`No labeled element found: ${label}`);
+    }
+    fireEvent.click(element);
+  };
+
+  static clickOnTestId = (testId: string) => {
+    const element = document.querySelector(`[data-testid='${testId}']`);
+    // const element = GlobalTestState.renderResult.queryByTestId(testId);
+    if (!element) {
+      throw new Error(`No element with testid "${testId}" found`);
+    }
+    fireEvent.click(element);
+  };
+
   /**
    * Creates an Excalidraw element, and returns a proxy that wraps it so that
    * accessing props will return the latest ones from the object existing in
@@ -202,6 +264,7 @@ export class UI {
       size = 10,
       width = size,
       height = width,
+      angle = 0,
     }: {
       position?: number;
       x?: number;
@@ -209,15 +272,16 @@ export class UI {
       size?: number;
       width?: number;
       height?: number;
+      angle?: number;
     } = {},
-  ): (T extends "arrow" | "line" | "draw"
+  ): (T extends "arrow" | "line" | "freedraw"
     ? ExcalidrawLinearElement
     : T extends "text"
     ? ExcalidrawTextElement
     : ExcalidrawElement) & {
     /** Returns the actual, current element from the elements array, instead
         of the proxy */
-    get(): T extends "arrow" | "line" | "draw"
+    get(): T extends "arrow" | "line" | "freedraw"
       ? ExcalidrawLinearElement
       : T extends "text"
       ? ExcalidrawTextElement
@@ -230,6 +294,10 @@ export class UI {
     mouse.up(x + (width ?? height ?? size), y + (height ?? size));
 
     const origElement = h.elements[h.elements.length - 1] as any;
+
+    if (angle !== 0) {
+      mutateElement(origElement, { angle });
+    }
 
     return new Proxy(
       {},
@@ -255,7 +323,13 @@ export class UI {
   static group(elements: ExcalidrawElement[]) {
     mouse.select(elements);
     Keyboard.withModifierKeys({ ctrl: true }, () => {
-      Keyboard.codePress(CODES.G);
+      Keyboard.keyPress(KEYS.G);
     });
   }
+
+  static queryContextMenu = () => {
+    return GlobalTestState.renderResult.container.querySelector(
+      ".context-menu",
+    ) as HTMLElement | null;
+  };
 }

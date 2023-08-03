@@ -1,7 +1,7 @@
 const webpack = require("webpack");
 const path = require("path");
-const BundleAnalyzerPlugin = require("webpack-bundle-analyzer")
-  .BundleAnalyzerPlugin;
+const BundleAnalyzerPlugin =
+  require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 
 module.exports = {
   mode: "production",
@@ -13,13 +13,18 @@ module.exports = {
     libraryTarget: "umd",
   },
   resolve: {
-    extensions: [".tsx", ".ts", ".js"],
+    extensions: [".tsx", ".ts", ".js", ".css", ".scss"],
   },
   optimization: {
     runtimeChunk: false,
   },
   module: {
     rules: [
+      {
+        test: /\.(sa|sc|c)ss$/,
+        exclude: /node_modules/,
+        use: ["style-loader", { loader: "css-loader" }, "sass-loader"],
+      },
       {
         test: /\.(ts|tsx|js)$/,
         use: [
@@ -28,6 +33,18 @@ module.exports = {
             options: {
               transpileOnly: true,
               configFile: path.resolve(__dirname, "../tsconfig.prod.json"),
+            },
+          },
+          {
+            loader: "babel-loader",
+
+            options: {
+              presets: [
+                "@babel/preset-env",
+                ["@babel/preset-react", { runtime: "automatic" }],
+                "@babel/preset-typescript",
+              ],
+              plugins: [["@babel/plugin-transform-runtime"]],
             },
           },
         ],

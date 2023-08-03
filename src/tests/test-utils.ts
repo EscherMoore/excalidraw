@@ -6,13 +6,17 @@ import {
   RenderResult,
   RenderOptions,
   waitFor,
+  fireEvent,
 } from "@testing-library/react";
 
 import * as toolQueries from "./queries/toolQueries";
 import { ImportedDataState } from "../data/types";
-import { STORAGE_KEYS } from "../excalidraw-app/data/localStorage";
+import { STORAGE_KEYS } from "../excalidraw-app/app_constants";
 
 import { SceneData } from "../types";
+import { getSelectedElements } from "../scene/selection";
+import { ExcalidrawElement } from "../element/types";
+import { UI } from "./helpers/ui";
 
 const customQueries = {
   ...queries,
@@ -100,5 +104,143 @@ const initLocalStorage = (data: ImportedDataState) => {
 };
 
 export const updateSceneData = (data: SceneData) => {
-  (window.h.collab as any).excalidrawAPI.updateScene(data);
+  (window.collab as any).excalidrawAPI.updateScene(data);
 };
+
+const originalGetBoundingClientRect =
+  global.window.HTMLDivElement.prototype.getBoundingClientRect;
+
+export const mockBoundingClientRect = (
+  {
+    top = 0,
+    left = 0,
+    bottom = 0,
+    right = 0,
+    width = 1920,
+    height = 1080,
+    x = 0,
+    y = 0,
+    toJSON = () => {},
+  } = {
+    top: 10,
+    left: 20,
+    bottom: 10,
+    right: 10,
+    width: 200,
+    x: 10,
+    y: 20,
+    height: 100,
+  },
+) => {
+  // override getBoundingClientRect as by default it will always return all values as 0 even if customized in html
+  global.window.HTMLDivElement.prototype.getBoundingClientRect = () => ({
+    top,
+    left,
+    bottom,
+    right,
+    width,
+    height,
+    x,
+    y,
+    toJSON,
+  });
+};
+
+export const withExcalidrawDimensions = async (
+  dimensions: { width: number; height: number },
+  cb: () => void,
+) => {
+  mockBoundingClientRect(dimensions);
+  // @ts-ignore
+  window.h.app.refreshDeviceState(h.app.excalidrawContainerRef.current!);
+  window.h.app.refresh();
+
+  await cb();
+
+  restoreOriginalGetBoundingClientRect();
+  // @ts-ignore
+  window.h.app.refreshDeviceState(h.app.excalidrawContainerRef.current!);
+  window.h.app.refresh();
+};
+
+export const restoreOriginalGetBoundingClientRect = () => {
+  global.window.HTMLDivElement.prototype.getBoundingClientRect =
+    originalGetBoundingClientRect;
+};
+
+export const assertSelectedElements = (
+  ...elements: (
+    | (ExcalidrawElement["id"] | ExcalidrawElement)[]
+    | ExcalidrawElement["id"]
+    | ExcalidrawElement
+  )[]
+) => {
+  const { h } = window;
+  const selectedElementIds = getSelectedElements(
+    h.app.getSceneElements(),
+    h.state,
+  ).map((el) => el.id);
+  const ids = elements
+    .flat()
+    .map((item) => (typeof item === "string" ? item : item.id));
+  expect(selectedElementIds.length).toBe(ids.length);
+  expect(selectedElementIds).toEqual(expect.arrayContaining(ids));
+};
+
+export const createPasteEvent = (
+  text:
+    | string
+    | /* getData function */ ((type: string) => string | Promise<string>),
+  files?: File[],
+) => {
+  return Object.assign(
+    new Event("paste", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    }),
+    {
+      clipboardData: {
+        getData: typeof text === "string" ? () => text : text,
+        files: files || [],
+      },
+    },
+  );
+};
+
+export const toggleMenu = (container: HTMLElement) => {
+  // open menu
+  fireEvent.click(container.querySelector(".dropdown-menu-button")!);
+};
+
+export const togglePopover = (label: string) => {
+  // Needed for radix-ui/react-popover as tests fail due to resize observer not being present
+  (global as any).ResizeObserver = class ResizeObserver {
+    constructor(cb: any) {
+      (this as any).cb = cb;
+    }
+
+    observe() {}
+
+    unobserve() {}
+    disconnect() {}
+  };
+
+  UI.clickLabeledElement(label);
+};
+
+expect.extend({
+  toBeNonNaNNumber(received) {
+    const pass = typeof received === "number" && !isNaN(received);
+    if (pass) {
+      return {
+        message: () => `expected ${received} not to be a non-NaN number`,
+        pass: true,
+      };
+    }
+    return {
+      message: () => `expected ${received} to be a non-NaN number`,
+      pass: false,
+    };
+  },
+});

@@ -1,18 +1,25 @@
 import "./Modal.scss";
 
-import React, { useState, useLayoutEffect } from "react";
+import React from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { KEYS } from "../keys";
+import { AppState } from "../types";
+import { useCreatePortalContainer } from "../hooks/useCreatePortalContainer";
 
-export const Modal = (props: {
+export const Modal: React.FC<{
   className?: string;
   children: React.ReactNode;
   maxWidth?: number;
   onCloseRequest(): void;
   labelledBy: string;
-}) => {
-  const modalRoot = useBodyRoot();
+  theme?: AppState["theme"];
+  closeOnClickOutside?: boolean;
+}> = (props) => {
+  const { closeOnClickOutside = true } = props;
+  const modalRoot = useCreatePortalContainer({
+    className: "excalidraw-modal-container",
+  });
 
   if (!modalRoot) {
     return null;
@@ -21,6 +28,7 @@ export const Modal = (props: {
   const handleKeydown = (event: React.KeyboardEvent) => {
     if (event.key === KEYS.ESCAPE) {
       event.nativeEvent.stopImmediatePropagation();
+      event.stopPropagation();
       props.onCloseRequest();
     }
   };
@@ -32,42 +40,20 @@ export const Modal = (props: {
       aria-modal="true"
       onKeyDown={handleKeydown}
       aria-labelledby={props.labelledBy}
+      data-prevent-outside-click
     >
-      <div className="Modal__background" onClick={props.onCloseRequest}></div>
+      <div
+        className="Modal__background"
+        onClick={closeOnClickOutside ? props.onCloseRequest : undefined}
+      />
       <div
         className="Modal__content"
         style={{ "--max-width": `${props.maxWidth}px` }}
+        tabIndex={0}
       >
         {props.children}
       </div>
     </div>,
     modalRoot,
   );
-};
-
-const useBodyRoot = () => {
-  const [div, setDiv] = useState<HTMLDivElement | null>(null);
-
-  useLayoutEffect(() => {
-    const isDarkTheme = !!document
-      .querySelector(".excalidraw")
-      ?.classList.contains("Appearance_dark");
-    const div = document.createElement("div");
-
-    div.classList.add("excalidraw", "excalidraw-modal-container");
-
-    if (isDarkTheme) {
-      div.classList.add("Appearance_dark");
-      div.classList.add("Appearance_dark-background-none");
-    }
-    document.body.appendChild(div);
-
-    setDiv(div);
-
-    return () => {
-      document.body.removeChild(div);
-    };
-  }, []);
-
-  return div;
 };

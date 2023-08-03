@@ -1,15 +1,24 @@
-import React from "react";
 import ReactDOM from "react-dom";
-import { render, fireEvent } from "./test-utils";
+import {
+  render,
+  fireEvent,
+  mockBoundingClientRect,
+  restoreOriginalGetBoundingClientRect,
+  assertSelectedElements,
+} from "./test-utils";
 import ExcalidrawApp from "../excalidraw-app";
 import * as Renderer from "../renderer/renderScene";
 import { KEYS } from "../keys";
 import { reseed } from "../random";
+import { API } from "./helpers/api";
+import { Keyboard, Pointer, UI } from "./helpers/ui";
+import { SHAPES } from "../shapes";
+import { vi } from "vitest";
 
 // Unmount ReactDOM from root
 ReactDOM.unmountComponentAtNode(document.getElementById("root")!);
 
-const renderScene = jest.spyOn(Renderer, "renderScene");
+const renderScene = vi.spyOn(Renderer, "renderScene");
 beforeEach(() => {
   localStorage.clear();
   renderScene.mockClear();
@@ -17,6 +26,192 @@ beforeEach(() => {
 });
 
 const { h } = window;
+
+const mouse = new Pointer("mouse");
+
+describe("box-selection", () => {
+  beforeEach(async () => {
+    await render(<ExcalidrawApp />);
+  });
+
+  it("should allow adding to selection via box-select when holding shift", async () => {
+    const rect1 = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 50,
+      height: 50,
+      backgroundColor: "red",
+      fillStyle: "solid",
+    });
+    const rect2 = API.createElement({
+      type: "rectangle",
+      x: 100,
+      y: 0,
+      width: 50,
+      height: 50,
+    });
+
+    h.elements = [rect1, rect2];
+
+    mouse.downAt(175, -20);
+    mouse.moveTo(85, 70);
+    mouse.up();
+
+    assertSelectedElements([rect2.id]);
+
+    Keyboard.withModifierKeys({ shift: true }, () => {
+      mouse.downAt(75, -20);
+      mouse.moveTo(-15, 70);
+      mouse.up();
+    });
+
+    assertSelectedElements([rect2.id, rect1.id]);
+  });
+
+  it("should (de)select element when box-selecting over and out while not holding shift", async () => {
+    const rect1 = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 50,
+      height: 50,
+      backgroundColor: "red",
+      fillStyle: "solid",
+    });
+
+    h.elements = [rect1];
+
+    mouse.downAt(75, -20);
+    mouse.moveTo(-15, 70);
+
+    assertSelectedElements([rect1.id]);
+
+    mouse.moveTo(100, -100);
+
+    assertSelectedElements([]);
+
+    mouse.up();
+
+    assertSelectedElements([]);
+  });
+});
+
+describe("inner box-selection", () => {
+  beforeEach(async () => {
+    await render(<ExcalidrawApp />);
+  });
+  it("selecting elements visually nested inside another", async () => {
+    const rect1 = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 300,
+      height: 300,
+      backgroundColor: "red",
+      fillStyle: "solid",
+    });
+    const rect2 = API.createElement({
+      type: "rectangle",
+      x: 50,
+      y: 50,
+      width: 50,
+      height: 50,
+    });
+    const rect3 = API.createElement({
+      type: "rectangle",
+      x: 150,
+      y: 150,
+      width: 50,
+      height: 50,
+    });
+    h.elements = [rect1, rect2, rect3];
+    Keyboard.withModifierKeys({ ctrl: true }, () => {
+      mouse.downAt(40, 40);
+      mouse.moveTo(290, 290);
+      mouse.up();
+
+      assertSelectedElements([rect2.id, rect3.id]);
+    });
+  });
+
+  it("selecting grouped elements visually nested inside another", async () => {
+    const rect1 = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 300,
+      height: 300,
+      backgroundColor: "red",
+      fillStyle: "solid",
+    });
+    const rect2 = API.createElement({
+      type: "rectangle",
+      x: 50,
+      y: 50,
+      width: 50,
+      height: 50,
+      groupIds: ["A"],
+    });
+    const rect3 = API.createElement({
+      type: "rectangle",
+      x: 150,
+      y: 150,
+      width: 50,
+      height: 50,
+      groupIds: ["A"],
+    });
+    h.elements = [rect1, rect2, rect3];
+
+    Keyboard.withModifierKeys({ ctrl: true }, () => {
+      mouse.downAt(40, 40);
+      mouse.moveTo(rect2.x + rect2.width + 10, rect2.y + rect2.height + 10);
+      mouse.up();
+
+      assertSelectedElements([rect2.id, rect3.id]);
+      expect(h.state.selectedGroupIds).toEqual({ A: true });
+    });
+  });
+
+  it("selecting & deselecting grouped elements visually nested inside another", async () => {
+    const rect1 = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 300,
+      height: 300,
+      backgroundColor: "red",
+      fillStyle: "solid",
+    });
+    const rect2 = API.createElement({
+      type: "rectangle",
+      x: 50,
+      y: 50,
+      width: 50,
+      height: 50,
+      groupIds: ["A"],
+    });
+    const rect3 = API.createElement({
+      type: "rectangle",
+      x: 150,
+      y: 150,
+      width: 50,
+      height: 50,
+      groupIds: ["A"],
+    });
+    h.elements = [rect1, rect2, rect3];
+    Keyboard.withModifierKeys({ ctrl: true }, () => {
+      mouse.downAt(rect2.x - 20, rect2.x - 20);
+      mouse.moveTo(rect2.x + rect2.width + 10, rect2.y + rect2.height + 10);
+      assertSelectedElements([rect2.id, rect3.id]);
+      expect(h.state.selectedGroupIds).toEqual({ A: true });
+      mouse.moveTo(rect2.x - 10, rect2.y - 10);
+      assertSelectedElements([rect1.id]);
+      expect(h.state.selectedGroupIds).toEqual({});
+      mouse.up();
+    });
+  });
+});
 
 describe("selection element", () => {
   it("create selection element on pointer down", async () => {
@@ -28,7 +223,7 @@ describe("selection element", () => {
     const canvas = container.querySelector("canvas")!;
     fireEvent.pointerDown(canvas, { clientX: 60, clientY: 100 });
 
-    expect(renderScene).toHaveBeenCalledTimes(4);
+    expect(renderScene).toHaveBeenCalledTimes(5);
     const selectionElement = h.state.selectionElement!;
     expect(selectionElement).not.toBeNull();
     expect(selectionElement.type).toEqual("selection");
@@ -49,7 +244,7 @@ describe("selection element", () => {
     fireEvent.pointerDown(canvas, { clientX: 60, clientY: 100 });
     fireEvent.pointerMove(canvas, { clientX: 150, clientY: 30 });
 
-    expect(renderScene).toHaveBeenCalledTimes(5);
+    expect(renderScene).toHaveBeenCalledTimes(6);
     const selectionElement = h.state.selectionElement!;
     expect(selectionElement).not.toBeNull();
     expect(selectionElement.type).toEqual("selection");
@@ -71,12 +266,20 @@ describe("selection element", () => {
     fireEvent.pointerMove(canvas, { clientX: 150, clientY: 30 });
     fireEvent.pointerUp(canvas);
 
-    expect(renderScene).toHaveBeenCalledTimes(6);
+    expect(renderScene).toHaveBeenCalledTimes(7);
     expect(h.state.selectionElement).toBeNull();
   });
 });
 
 describe("select single element on the scene", () => {
+  beforeAll(() => {
+    mockBoundingClientRect();
+  });
+
+  afterAll(() => {
+    restoreOriginalGetBoundingClientRect();
+  });
+
   it("rectangle", async () => {
     const { getByToolName, container } = await render(<ExcalidrawApp />);
     const canvas = container.querySelector("canvas")!;
@@ -87,7 +290,9 @@ describe("select single element on the scene", () => {
       fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
       fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
       fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, { key: KEYS.ESCAPE });
+      fireEvent.keyDown(document, {
+        key: KEYS.ESCAPE,
+      });
     }
 
     const tool = getByToolName("selection");
@@ -96,7 +301,7 @@ describe("select single element on the scene", () => {
     fireEvent.pointerDown(canvas, { clientX: 45, clientY: 20 });
     fireEvent.pointerUp(canvas);
 
-    expect(renderScene).toHaveBeenCalledTimes(10);
+    expect(renderScene).toHaveBeenCalledTimes(11);
     expect(h.state.selectionElement).toBeNull();
     expect(h.elements.length).toEqual(1);
     expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
@@ -114,7 +319,9 @@ describe("select single element on the scene", () => {
       fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
       fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
       fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, { key: KEYS.ESCAPE });
+      fireEvent.keyDown(document, {
+        key: KEYS.ESCAPE,
+      });
     }
 
     const tool = getByToolName("selection");
@@ -123,7 +330,7 @@ describe("select single element on the scene", () => {
     fireEvent.pointerDown(canvas, { clientX: 45, clientY: 20 });
     fireEvent.pointerUp(canvas);
 
-    expect(renderScene).toHaveBeenCalledTimes(10);
+    expect(renderScene).toHaveBeenCalledTimes(11);
     expect(h.state.selectionElement).toBeNull();
     expect(h.elements.length).toEqual(1);
     expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
@@ -141,7 +348,9 @@ describe("select single element on the scene", () => {
       fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
       fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
       fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, { key: KEYS.ESCAPE });
+      fireEvent.keyDown(document, {
+        key: KEYS.ESCAPE,
+      });
     }
 
     const tool = getByToolName("selection");
@@ -150,7 +359,7 @@ describe("select single element on the scene", () => {
     fireEvent.pointerDown(canvas, { clientX: 45, clientY: 20 });
     fireEvent.pointerUp(canvas);
 
-    expect(renderScene).toHaveBeenCalledTimes(10);
+    expect(renderScene).toHaveBeenCalledTimes(11);
     expect(h.state.selectionElement).toBeNull();
     expect(h.elements.length).toEqual(1);
     expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
@@ -168,7 +377,9 @@ describe("select single element on the scene", () => {
       fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
       fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
       fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, { key: KEYS.ESCAPE });
+      fireEvent.keyDown(document, {
+        key: KEYS.ESCAPE,
+      });
     }
 
     /*
@@ -190,7 +401,7 @@ describe("select single element on the scene", () => {
     fireEvent.pointerDown(canvas, { clientX: 40, clientY: 40 });
     fireEvent.pointerUp(canvas);
 
-    expect(renderScene).toHaveBeenCalledTimes(10);
+    expect(renderScene).toHaveBeenCalledTimes(11);
     expect(h.state.selectionElement).toBeNull();
     expect(h.elements.length).toEqual(1);
     expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
@@ -207,7 +418,9 @@ describe("select single element on the scene", () => {
       fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
       fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
       fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, { key: KEYS.ESCAPE });
+      fireEvent.keyDown(document, {
+        key: KEYS.ESCAPE,
+      });
     }
 
     /*
@@ -229,11 +442,27 @@ describe("select single element on the scene", () => {
     fireEvent.pointerDown(canvas, { clientX: 40, clientY: 40 });
     fireEvent.pointerUp(canvas);
 
-    expect(renderScene).toHaveBeenCalledTimes(10);
+    expect(renderScene).toHaveBeenCalledTimes(11);
     expect(h.state.selectionElement).toBeNull();
     expect(h.elements.length).toEqual(1);
     expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
 
     h.elements.forEach((element) => expect(element).toMatchSnapshot());
+  });
+});
+
+describe("tool locking & selection", () => {
+  it("should not select newly created element while tool is locked", async () => {
+    await render(<ExcalidrawApp />);
+
+    UI.clickTool("lock");
+    expect(h.state.activeTool.locked).toBe(true);
+
+    for (const { value } of Object.values(SHAPES)) {
+      if (value !== "image" && value !== "selection") {
+        const element = UI.createElement(value);
+        expect(h.state.selectedElementIds[element.id]).not.toBe(true);
+      }
+    }
   });
 });

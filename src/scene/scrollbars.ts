@@ -30,12 +30,8 @@ export const getScrollBars = (
     };
   }
   // This is the bounding box of all the elements
-  const [
-    elementsMinX,
-    elementsMinY,
-    elementsMaxX,
-    elementsMaxY,
-  ] = getCommonBounds(elements);
+  const [elementsMinX, elementsMinY, elementsMaxX, elementsMaxY] =
+    getCommonBounds(elements);
 
   // Apply zoom
   const viewportWidthWithZoom = viewportWidth / zoom.value;
@@ -45,10 +41,10 @@ export const getScrollBars = (
   const viewportHeightDiff = viewportHeight - viewportHeightWithZoom;
 
   const safeArea = {
-    top: parseInt(getGlobalCSSVariable("sat")),
-    bottom: parseInt(getGlobalCSSVariable("sab")),
-    left: parseInt(getGlobalCSSVariable("sal")),
-    right: parseInt(getGlobalCSSVariable("sar")),
+    top: parseInt(getGlobalCSSVariable("sat")) || 0,
+    bottom: parseInt(getGlobalCSSVariable("sab")) || 0,
+    left: parseInt(getGlobalCSSVariable("sal")) || 0,
+    right: parseInt(getGlobalCSSVariable("sar")) || 0,
   };
 
   const isRTL = getLanguage().rtl;
